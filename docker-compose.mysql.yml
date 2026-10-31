@@ -1,0 +1,43 @@
+# ══════════════════════════════════════════════════════════════════
+#  EduSmart — compose chạy kèm MySQL riêng (cho máy CÓ Docker)
+#
+#      docker compose -f docker-compose.mysql.yml up -d --build
+#
+#  → App tại http://localhost:8081, dữ liệu MySQL lưu volume mysql-data
+# ══════════════════════════════════════════════════════════════════
+services:
+  db:
+    image: mysql:8
+    environment:
+      MYSQL_DATABASE: edusmart
+      MYSQL_ROOT_PASSWORD: edusmart123
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pedusmart123"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  app:
+    build: .
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: ""          # bỏ H2 → dùng MySQL qua DB_URL
+      DB_URL: jdbc:mysql://db:3306/edusmart?useSSL=false&serverTimezone=Asia/Ho_Chi_Minh&allowPublicKeyRetrieval=true
+      DB_USERNAME: root
+      DB_PASSWORD: edusmart123
+      UPLOAD_DIR: /app/uploads
+      JWT_SECRET: ${JWT_SECRET:-change-me-please-with-a-random-32-plus-char-string!!}
+    volumes:
+      - app-uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  app-uploads:
+  mysql-data:

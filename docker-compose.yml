@@ -1,0 +1,26 @@
+# ══════════════════════════════════════════════════════════════════
+#  EduSmart — docker compose (cho máy CÓ Docker)
+#  Mặc định: database nhúng H2 (nhẹ, không cần MySQL)
+#
+#      docker compose up -d --build     →  mở http://localhost:8081
+#
+#  Muốn dùng MySQL:  docker compose -f docker-compose.mysql.yml up -d --build
+#  Máy KHÔNG có Docker: dùng build-all.bat + start-app.bat (chỉ cần Java)
+# ══════════════════════════════════════════════════════════════════
+services:
+  app:
+    build: .
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: h2
+      # Đổi JWT_SECRET khi chạy thật!
+      JWT_SECRET: ${JWT_SECRET:-change-me-please-with-a-random-32-plus-char-string!!}
+    volumes:
+      - app-data:/app/data
+      - app-uploads:/app/uploads
+    restart: unless-stopped
+
+volumes:
+  app-data:
+  app-uploads:
