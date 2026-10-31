@@ -75,7 +75,12 @@ export default function AiExamModal({ isOpen, onClose, onCreated }) {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('mode', mode);
-      formData.append('questionCount', String(questionCount));
+      // Đề thi + "Theo tài liệu" → KHÔNG gửi questionCount, AI tạo đúng số câu như trong đề
+      const showCountInput = !(mode === 'EXAM' && autoDuration);
+      if (showCountInput) {
+        const count = Math.min(100, Math.max(3, parseInt(questionCount, 10) || 10));
+        formData.append('questionCount', String(count));
+      }
       if (grade) formData.append('grade', grade);
       if (mode === 'EXAM' && !autoDuration) {
         formData.append('durationMinutes', String(durationMinutes));
@@ -181,15 +186,21 @@ export default function AiExamModal({ isOpen, onClose, onCreated }) {
             </div>
           </div>
 
-          {/* Số câu hỏi + lớp */}
+          {/* Số câu hỏi + lớp — chế độ Đề thi + "Theo tài liệu" thì AI tự theo đề */}
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Số câu hỏi</label>
-              <input
-                type="number" min={3} max={30} value={questionCount}
-                onChange={(e) => setQuestionCount(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-              />
+              {mode === 'EXAM' && autoDuration ? (
+                <div className="w-full bg-indigo-50/60 border border-indigo-200 rounded-xl px-4 py-2.5 text-sm text-indigo-700 font-medium">
+                  <i className="fa-solid fa-wand-magic-sparkles mr-1.5"></i>Theo đề thi trong tài liệu
+                </div>
+              ) : (
+                <input
+                  type="number" min={3} max={100} value={questionCount}
+                  onChange={(e) => setQuestionCount(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                />
+              )}
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Đối tượng (lớp)</label>

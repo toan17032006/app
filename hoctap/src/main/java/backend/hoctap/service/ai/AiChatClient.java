@@ -63,8 +63,16 @@ public class AiChatClient {
     @Value("${ai.max-tokens:8192}")
     private int maxTokens;
 
-    /** Gửi 1 lượt chat, trả về nội dung text của câu trả lời */
+    /** Gửi 1 lượt chat với max_tokens mặc định */
     public String chat(String systemPrompt, String userPrompt) {
+        return chat(systemPrompt, userPrompt, null);
+    }
+
+    /**
+     * Gửi 1 lượt chat, trả về nội dung text của câu trả lời.
+     * @param maxTokensOverride nâng trần token khi cần output dài (vd 100 câu hỏi)
+     */
+    public String chat(String systemPrompt, String userPrompt, Integer maxTokensOverride) {
         String key = apiKey != null ? apiKey.trim() : "";
         if (key.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
@@ -85,7 +93,7 @@ public class AiChatClient {
         for (String currentModel : models) {
             for (int attempt = 0; attempt <= Math.max(0, retryAttempts); attempt++) {
                 try {
-                    String content = doChat(client, currentModel, systemPrompt, userPrompt);
+                    String content = doChat(client, currentModel, systemPrompt, userPrompt, maxTokensOverride);
                     if (!currentModel.equals(model.trim())) {
                         log.info("AI succeeded with fallback model '{}'", currentModel);
                     }
@@ -113,11 +121,12 @@ public class AiChatClient {
 
     /** Một lượt gọi API với 1 model cụ thể */
     private String doChat(RestClient client, String currentModel,
-                          String systemPrompt, String userPrompt) {
+                          String systemPrompt, String userPrompt, Integer maxTokensOverride) {
+        int tokens = maxTokensOverride != null ? maxTokensOverride : maxTokens;
         Map<String, Object> body = Map.of(
                 "model", currentModel,
                 "temperature", 0.2,
-                "max_tokens", maxTokens,
+                "max_tokens", tokens,
                 "messages", List.of(
                         Map.of("role", "system", "content", systemPrompt),
                         Map.of("role", "user", "content", userPrompt)

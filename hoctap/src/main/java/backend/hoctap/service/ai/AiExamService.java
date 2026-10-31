@@ -61,6 +61,17 @@ public class AiExamService {
     private static final Pattern DURATION_PATTERN = Pattern.compile(
             "(\\d{1,3})\\s*(?:phút|minutes?|mins?)\\b", Pattern.CASE_INSENSITIVE);
 
+    /** "Đề thi gồm 40 câu hỏi" / "60 câu trắc nghiệm" — số câu ghi trong đề gốc */
+    private static final Pattern QUESTION_COUNT_PATTERN = Pattern.compile(
+            "(\\d{1,3})\\s*(?:câu|cau)\\s*(?:hỏi|hoi|trắc\\s*nghiệm|trac\\s*nghiem)?", Pattern.CASE_INSENSITIVE);
+
+    /** Trần số câu hỏi cho phép: 3..100 */
+    private static final int MIN_QUESTIONS = 3;
+    private static final int MAX_QUESTIONS = 100;
+
+    @Value("${ai.max-tokens:8192}")
+    private int configuredMaxTokens;
+
     @Transactional
     public ExamResponse generateFromFile(MultipartFile file, String mode,
                                          Integer requestedDuration, Integer questionCount,
@@ -94,20 +105,31 @@ public class AiExamService {
 
         // ── 3. Quét thời gian làm bài từ chính tài liệu ──────────────────
         Integer documentDuration = findDurationInText(documentText);
+        // Chế độ ĐỀ THI: nếu đề ghi "gồm N câu" → tạo ĐÚNG N câu như đề gốc
+        Integer documentQuestionCount = MODE_EXAM.equals(effectiveMode)
+                ? findQuestionCountInText(documentText) : null;
+        int effectiveQuestionCount = documentQuestionCount != null
+                ? documentQuestionCount
+                : clamp(questionCount, MIN_QUESTIONS, MAX_QUESTIONS, 10);
+
+        // Nhiều câu cần output rất dài → nâng max_tokens theo số câu (trần 60000)
+        int adaptiveTokens = Math.min(60000,
+                Math.max(configuredMaxTokens, effectiveQuestionCount * 220 + 2500));
 
         // ── 4. Gọi AI tạo câu hỏi ────────────────────────────────────────
         String systemPrompt = buildSystemPrompt(effectiveMode);
         String userPrompt = buildUserPrompt(documentText, effectiveMode,
-                questionCount, grade, documentDuration, requestedDuration);
+                effectiveQuestionCount, grade, documentDuration, requestedDuration);
 
-        String aiResponse = aiChatClient.chat(systemPrompt, userPrompt);
+        String aiResponse = aiChatClient.chat(systemPrompt, userPrompt, adaptiveTokens);
 
         JsonNode examJson = parseExamJson(aiResponse);
         // JSON sai cấu trúc cơ bản → hỏi lại AI một lần
         if (examJson == null || examJson.path("questions").isEmpty()) {
             aiResponse = aiChatClient.chat(systemPrompt,
                     userPrompt + "\n\n[LƯU Ý QUAN TRỌNG: Lần trước bạn trả về sai định dạng. "
-                    + "Chỉ được trả về MỘT khối JSON hợp lệ, không thêm chữ nào khác.]");
+                    + "Chỉ được trả về MỘT khối JSON hợp lệ, không thêm chữ nào khác.]",
+                    adaptiveTokens);
             examJson = parseExamJson(aiResponse);
             if (examJson == null || examJson.path("questions").isEmpty()) {
                 throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
@@ -121,7 +143,7 @@ public class AiExamService {
                 examJson.path("durationMinutes").asInt(0), requestedDuration);
 
         // ── 6. Tạo Exam + Question + Option trong DB ────────────────────
-        Exam exam = buildExam(examJson, effectiveMode, duration, questionCount);
+        Exam exam = buildExam(examJson, effectiveMode, duration, effectiveQuestionCount);
 
         log.info("AI Agent created exam '{}' (mode={}, {} câu, {} phút) từ file {}",
                 exam.getTitle(), effectiveMode, exam.getQuestions().size(),
@@ -168,6 +190,7 @@ public class AiExamService {
             sb.append("durationMinutes PHẢI bằng đúng số phút đó (ví dụ đề ghi '90 phút' → 90). ");
             sb.append("Nếu là tài liệu lý thuyết không ghi thời gian, chọn thời gian hợp lý theo độ dài đề.\n");
             sb.append("- explanation có thể để chuỗi rỗng nếu tài liệu không nêu lý do.\n");
+            sb.append("- PHẢI tạo ĐỦ ĐÚNG số câu được yêu cầu - tuyệt đối không trả thiếu.\n");
         }
         return sb.toString();
     }
@@ -180,8 +203,9 @@ public class AiExamService {
             sb.append("Đối tượng làm bài: ").append(grade);
             sb.append(" (hãy chọn từ vựng và độ khó phù hợp đối tượng này).\n");
         }
-        int count = clamp(questionCount, 3, 30, 10);
-        sb.append("Số lượng câu hỏi cần tạo: ").append(count).append(".\n");
+        int count = clamp(questionCount, MIN_QUESTIONS, MAX_QUESTIONS, 10);
+        sb.append("Số lượng câu hỏi cần tạo: ").append(count)
+          .append(" — BẮT BUỘC ĐỦ ĐÚNG ").append(count).append(" câu, không được lược bớt.\n");
         if (MODE_EXAM.equals(mode)) {
             if (documentDuration != null) {
                 sb.append("Tài liệu CÓ ghi thời gian làm bài: ").append(documentDuration)
@@ -237,7 +261,7 @@ public class AiExamService {
         JsonNode questions = examJson.path("questions");
         int added = 0;
         for (JsonNode q : questions) {
-            if (added >= Math.max(maxQuestions, 30)) break; // trần an toàn 30 câu
+            if (added >= Math.min(maxQuestions, MAX_QUESTIONS)) break; // trần an toàn 30 câu
 
             String questionText = q.path("questionText").asText("").trim();
             if (questionText.isEmpty()) continue;
@@ -292,6 +316,18 @@ public class AiExamService {
     }
 
     /** Tìm "N phút" trong text — lấy số phút đầu tiên hợp lệ (5..300) */
+    private Integer findQuestionCountInText(String text) {
+        Matcher m = QUESTION_COUNT_PATTERN.matcher(text);
+        int best = -1;
+        while (m.find()) {
+            try {
+                int value = Integer.parseInt(m.group(1));
+                if (value >= 10 && value <= 150 && value > best) best = value;
+            } catch (NumberFormatException ignored) {}
+        }
+        return best > 0 ? best : null;
+    }
+
     private Integer findDurationInText(String text) {
         Matcher m = DURATION_PATTERN.matcher(text);
         while (m.find()) {
