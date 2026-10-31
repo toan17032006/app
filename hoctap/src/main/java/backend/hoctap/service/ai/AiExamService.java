@@ -1,5 +1,6 @@
 package backend.hoctap.service.ai;
 
+import backend.hoctap.dto.response.ai.DetectCodesResponse;
 import backend.hoctap.dto.response.exam.ExamResponse;
 import backend.hoctap.entity.Exam;
 import backend.hoctap.entity.Option;
@@ -59,13 +60,20 @@ public class AiExamService {
 
     /** "Thời gian làm bài: 90 phút" / "Time allowed: 90 minutes" / "trong 60 phút" */
     private static final Pattern DURATION_PATTERN = Pattern.compile(
-            "(\\d{1,3})\\s*(?:phút|minutes?|mins?)\\b", Pattern.CASE_INSENSITIVE);
+            "(\\d{1,3})\\s*(?:ph[uú]?t|minutes?|mins?)\\b", Pattern.CASE_INSENSITIVE);
 
     /** "Đề thi gồm 40 câu hỏi" / "60 câu trắc nghiệm" — số câu ghi trong đề gốc */
     private static final Pattern QUESTION_COUNT_PATTERN = Pattern.compile(
             "(\\d{1,3})\\s*(?:câu|cau)\\s*(?:hỏi|hoi|trắc\\s*nghiệm|trac\\s*nghiem)?", Pattern.CASE_INSENSITIVE);
 
     /** Trần số câu hỏi cho phép: 3..100 */
+    /**
+     * "Mã đề thi 101" / "MÃ ĐỀ: 102" / "MA DE 103" — cách ghi mã đề phổ biến
+     * trong đề thi THPT (một tài liệu thường in nhiều mã đề).
+     */
+    private static final Pattern EXAM_CODE_PATTERN = Pattern.compile(
+            "[Mm][Aa\u00c3\u00e3\u00e3]\\s*[ĐDd][Eeđe](?:\\s*[Tt][Hh][Ii])?\\s*[:\\-]?\\s*(\\d{2,3})");
+
     private static final int MIN_QUESTIONS = 3;
     private static final int MAX_QUESTIONS = 100;
 
@@ -75,7 +83,7 @@ public class AiExamService {
     @Transactional
     public ExamResponse generateFromFile(MultipartFile file, String mode,
                                          Integer requestedDuration, Integer questionCount,
-                                         String grade) {
+                                         String grade, String examCode) {
         // ── 1. Validate đầu vào ─────────────────────────────────────────
         String effectiveMode = MODE_HOMEWORK.equalsIgnoreCase(mode) ? MODE_HOMEWORK : MODE_EXAM;
         if (file == null || file.isEmpty()) {
@@ -119,7 +127,7 @@ public class AiExamService {
         // ── 4. Gọi AI tạo câu hỏi ────────────────────────────────────────
         String systemPrompt = buildSystemPrompt(effectiveMode);
         String userPrompt = buildUserPrompt(documentText, effectiveMode,
-                effectiveQuestionCount, grade, documentDuration, requestedDuration);
+                effectiveQuestionCount, grade, documentDuration, requestedDuration, examCode);
 
         String aiResponse = aiChatClient.chat(systemPrompt, userPrompt, adaptiveTokens);
 
@@ -143,7 +151,7 @@ public class AiExamService {
                 examJson.path("durationMinutes").asInt(0), requestedDuration);
 
         // ── 6. Tạo Exam + Question + Option trong DB ────────────────────
-        Exam exam = buildExam(examJson, effectiveMode, duration, effectiveQuestionCount);
+        Exam exam = buildExam(examJson, effectiveMode, duration, effectiveQuestionCount, examCode);
 
         log.info("AI Agent created exam '{}' (mode={}, {} câu, {} phút) từ file {}",
                 exam.getTitle(), effectiveMode, exam.getQuestions().size(),
@@ -197,8 +205,15 @@ public class AiExamService {
 
     private String buildUserPrompt(String documentText, String mode,
                                    Integer questionCount, String grade,
-                                   Integer documentDuration, Integer requestedDuration) {
+                                   Integer documentDuration, Integer requestedDuration,
+                                   String examCode) {
         StringBuilder sb = new StringBuilder();
+        if (examCode != null && !examCode.isBlank()) {
+            sb.append("QUAN TRỌNG NHẤT: Tài liệu chứa NHIỀU mã đề thi. ");
+            sb.append("CHỈ tạo câu hỏi, thứ tự và đáp án của MÃ ĐỀ ").append(examCode.trim()).append(". ");
+            sb.append("TUYỆT ĐỐI bỏ qua câu hỏi của các mã đề khác. ");
+            sb.append("Tiêu đề đề thi phải kèm \"(Mã đề ").append(examCode.trim()).append(")\n");
+        }
         if (grade != null && !grade.isBlank()) {
             sb.append("Đối tượng làm bài: ").append(grade);
             sb.append(" (hãy chọn từ vựng và độ khó phù hợp đối tượng này).\n");
@@ -244,9 +259,13 @@ public class AiExamService {
         }
     }
 
-    private Exam buildExam(JsonNode examJson, String mode, int duration, int maxQuestions) {
+private Exam buildExam(JsonNode examJson, String mode, int duration, int maxQuestions,
+                           String examCode) {
         String title = truncate(examJson.path("title").asText(
                 MODE_HOMEWORK.equals(mode) ? "Bài tập luyện tập — AI" : "Đề thi — AI"), 200);
+        if (examCode != null && !examCode.isBlank() && !title.contains(examCode.trim())) {
+            title = truncate(title + " (Mã đề " + examCode.trim() + ")", 200);
+        }
         String category = MODE_HOMEWORK.equals(mode)
                 ? "Bài tập AI"
                 : truncate(examJson.path("category").asText("AI"), 50);
@@ -315,7 +334,52 @@ public class AiExamService {
         return clamp(fallback, 5, 300, 15);
     }
 
-    /** Tìm "N phút" trong text — lấy số phút đầu tiên hợp lệ (5..300) */
+    /**
+     * Dò danh sách mã đề thi trong tài liệu: regex quét "Mã đề 101" trước,
+     * nếu ít hơn 2 mã thì nhờ AI liệt kê các cách ghi khác ("Đề số 15"...).
+     * Kèm thời gian + số câu tìm được để UI hiển thị cho người dùng.
+     */
+    public DetectCodesResponse detectCodes(String documentText) {
+        Integer duration = findDurationInText(documentText);
+        Integer questionCount = findQuestionCountInText(documentText);
+
+        java.util.LinkedHashSet<String> codes = new java.util.LinkedHashSet<>();
+        Matcher m = EXAM_CODE_PATTERN.matcher(documentText);
+        while (m.find()) {
+            codes.add(m.group(1));
+        }
+
+        String source = "regex";
+        if (codes.size() < 2) {
+            try {
+                String aiResp = aiChatClient.chat(
+                        "Bạn là công cụ trích xuất dữ liệu. CHỈ trả về JSON, không thêm chữ.",
+                        "Liệt kê TẤT CẢ các mã đề thi trong tài liệu dưới đây (cách ghi: "
+                        + "'Mã đề 101', 'Đề số 15', 'Code 103'...). "
+                        + "Trả JSON: {\"codes\": [\"101\", \"102\"]}. Nếu chỉ có 1 đề không ghi mã → mảng rỗng."
+                        + "\n\nTÀI LIỆU:\n" + documentText);
+
+                com.fasterxml.jackson.databind.JsonNode node = parseExamJson(aiResp);
+                if (node != null && node.has("codes")) {
+                    for (com.fasterxml.jackson.databind.JsonNode c : node.get("codes")) {
+                        String code = c.asText("").trim();
+                        if (!code.isEmpty()) codes.add(code);
+                    }
+                    source = "ai";
+                }
+            } catch (Exception e) {
+                log.warn("AI exam-code detection failed, dùng kết quả regex: {}", e.getMessage());
+            }
+        }
+
+        return DetectCodesResponse.builder()
+                .codes(List.copyOf(codes))
+                .source(source)
+                .durationMinutes(duration)
+                .questionCount(questionCount)
+                .build();
+    }
+
     private Integer findQuestionCountInText(String text) {
         Matcher m = QUESTION_COUNT_PATTERN.matcher(text);
         int best = -1;
@@ -328,6 +392,7 @@ public class AiExamService {
         return best > 0 ? best : null;
     }
 
+    /** Tìm "N phút" trong text — lấy số phút đầu tiên hợp lệ (5..300) */
     private Integer findDurationInText(String text) {
         Matcher m = DURATION_PATTERN.matcher(text);
         while (m.find()) {

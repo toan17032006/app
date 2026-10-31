@@ -60,4 +60,8 @@ export const aiService = {
   /** Gửi file tài liệu cho AI Agent tạo đề thi/bài tập (FormData: file, mode, ...) */
   generateExam: (formData) =>
     apiFetch('/api/ai/generate-exam', { method: 'POST', body: formData }),
+
+  /** Quét tài liệu liệt kê các mã đề thi ({codes, source, durationMinutes, questionCount}) */
+  detectExamCodes: (formData) =>
+    apiFetch('/api/ai/detect-exam-codes', { method: 'POST', body: formData }),
 };
