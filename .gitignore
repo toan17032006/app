@@ -1,0 +1,27 @@
+# ══ Node / Next.js (frontend) ══════════════════════════════════
+node_modules/
+.next/
+out/
+npm-debug.log*
+
+# ══ Java / Maven (backend) ═════════════════════════════════════
+target/
+*.class
+*.jar
+*.log
+
+# ══ Dữ liệu chạy tại máy (database H2, file upload) ════════════
+data/
+uploads/
+
+# ══ Biến môi trường / secrets ══════════════════════════════════
+.env
+.env.local
+.env.*.local
+
+# ══ IDE / OS ═══════════════════════════════════════════════════
+.idea/
+.vscode/
+*.iml
+Thumbs.db
+.DS_Store

@@ -15,6 +15,9 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: h2
       # Đổi JWT_SECRET khi chạy thật!
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_MODEL: ${AI_MODEL:-}
       JWT_SECRET: ${JWT_SECRET:-change-me-please-with-a-random-32-plus-char-string!!}
     volumes:
       - app-data:/app/data

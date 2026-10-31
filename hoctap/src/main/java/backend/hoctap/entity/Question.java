@@ -36,6 +36,13 @@ public class Question {
     @Column(name = "order_index", nullable = false)
     private Integer orderIndex;
 
+    /**
+     * Giải thích đáp án (tùy chọn) — AI Agent tạo bài tập sẽ điền trường này,
+     * hiển thị cho học sinh sau khi nộp bài.
+     */
+    @Column(name = "explanation", columnDefinition = "TEXT")
+    private String explanation;
+
     // ── Relationships ──────────────────────────────────────────────────────
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("optionIndex ASC")

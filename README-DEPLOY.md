@@ -128,6 +128,36 @@ java -jar hoctap.jar \
 
 ---
 
+## Tính năng AI Agent — tạo đề thi / bài tập từ file 🤖
+
+Nút **"Tạo bằng AI"** trong tab Bài kiểm tra: tải lên file **PDF, DOC, DOCX, TXT** (≤15MB), AI đọc và tự ra đề:
+
+- **Chế độ Đề thi**: câu hỏi trắc nghiệm bám sát tài liệu; **thời gian phòng thi tự khớp thời gian làm bài GHI TRONG tài liệu** (vd đề ghi "Thời gian làm bài: 90 phút" → phòng thi 90 phút), hoặc tự chọn thời gian. Chấm tự động theo đáp án.
+- **Chế độ Bài tập**: câu hỏi trắc nghiệm **có GIẢI THÍCH đáp án** (hiện sau khi nộp), không giới hạn thời gian.
+- Chọn **lớp/đối tượng** (Năm nhất → Năm tư, Lớp 10 → 12) để AI điều chỉnh độ khó.
+- File mẫu để thử: `samples/test-theory.pdf` (tài liệu lý thuyết), `samples/test-exam-90phut.pdf` (đề thi ghi 90 phút), kèm `samples/mock-ai-server.py` (mock server để test không cần API key).
+
+### Cấu hình AI (biến môi trường — chuẩn OpenAI-compatible, dùng được nhiều nhà cung cấp)
+
+| Biến | Mặc định | Ý nghĩa |
+|---|---|---|
+| `AI_API_KEY` | *(trống — AI tắt)* | API key. **Gemini miễn phí**: lấy tại aistudio.google.com |
+| `AI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai` | Endpoint OpenAI-compatible |
+| `AI_MODEL` | `gemini-2.5-flash` | Tên model |
+| `AI_MAX_TOKENS` | `8192` | Tăng nếu model "suy nghĩ" lâu (qwen3...) |
+
+Ví dụ:
+
+```bash
+# Gemini (miễn phí, khuyến nghị) — chỉ cần key:
+set AI_API_KEY=AIza...
+
+# Ollama chạy tại máy:
+set AI_BASE_URL=http://localhost:11434/v1
+set AI_MODEL=qwen3:4b
+set AI_API_KEY=ollama
+```
+
 ## Các tính năng đã hoàn thiện
 
 - **Đăng ký / đăng nhập** email + JWT (access/refresh tự động), **Google Sign-In**
@@ -140,6 +170,7 @@ java -jar hoctap.jar \
 - **Bảng xếp hạng**: Tổng / **Tuần này** / **Tháng này** (xếp theo xu kiếm được trong kỳ),
   highlight chính mình, avatar từ tên
 - **Thông báo**: chuông header hiện bài tập sắp đến hạn / quá hạn
+- **AI Agent tạo đề thi/bài tập từ file** (PDF/DOC/DOCX/TXT — chi tiết ở trên)
 - **Swagger API docs**: http://localhost:8081/swagger-ui.html
 - Frontend nhúng trong JAR — deploy 1 file duy nhất
 

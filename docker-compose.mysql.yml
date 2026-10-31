@@ -30,6 +30,9 @@ services:
       DB_USERNAME: root
       DB_PASSWORD: edusmart123
       UPLOAD_DIR: /app/uploads
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_BASE_URL: ${AI_BASE_URL:-}
+      AI_MODEL: ${AI_MODEL:-}
       JWT_SECRET: ${JWT_SECRET:-change-me-please-with-a-random-32-plus-char-string!!}
     volumes:
       - app-uploads:/app/uploads

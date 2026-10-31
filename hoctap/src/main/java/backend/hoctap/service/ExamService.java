@@ -200,6 +200,7 @@ public class ExamService {
                     .questionText(q.getQuestionText())
                     .selectedIndex(selected)
                     .correctIndex(q.getCorrectOptionIndex())   // ✅ Lúc này mới tiết lộ
+                    .explanation(q.getExplanation())           // Giải thích (AI bài tập có thể điền)
                     .isCorrect(isCorrect)
                     .build());
         }
