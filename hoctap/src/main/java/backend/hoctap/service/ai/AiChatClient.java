@@ -50,7 +50,8 @@ public class AiChatClient {
 
     /** Gửi 1 lượt chat, trả về nội dung text của câu trả lời */
     public String chat(String systemPrompt, String userPrompt) {
-        if (apiKey == null || apiKey.isBlank()) {
+        String key = apiKey != null ? apiKey.trim() : "";
+        if (key.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "Tính năng AI chưa được cấu hình. Vui lòng đặt biến môi trường AI_API_KEY "
                     + "(hướng dẫn trong README-DEPLOY.md — Gemini miễn phí hoặc Ollama chạy tại máy).");
@@ -65,7 +66,7 @@ public class AiChatClient {
         RestClient client = RestClient.builder()
                 .baseUrl(stripTrailingSlash(baseUrl))
                 .requestFactory(factory)
-                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + apiKey)
+                .defaultHeader(HttpHeaders.AUTHORIZATION, "Bearer " + key)
                 .build();
 
         Map<String, Object> body = Map.of(

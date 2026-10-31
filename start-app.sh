@@ -16,6 +16,14 @@ fi
 # Muốn dùng MySQL: export DB_URL=... DB_USERNAME=... DB_PASSWORD=... và bỏ dòng dưới
 export SPRING_PROFILES_ACTIVE=h2
 
+# ══ AI Agent (Gemini) ════════════════════════════════════════════
+# Nếu có file ai-key.txt (cùng thư mục, chứa API key Gemini) → tự nạp key
+# Lấy key miễn phí tại: https://aistudio.google.com/apikey
+if [ -f "ai-key.txt" ]; then
+    AI_API_KEY=$(tr -d '[:space:]' < ai-key.txt)
+    export AI_API_KEY
+fi
+
 echo ""
 echo " EduSmart đang khởi động... mở http://localhost:8081 sau ~10 giây"
 echo " (Ctrl+C để thoát)"

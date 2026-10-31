@@ -18,6 +18,7 @@ uploads/
 .env
 .env.local
 .env.*.local
+ai-key.txt
 
 # ══ IDE / OS ═══════════════════════════════════════════════════
 .idea/

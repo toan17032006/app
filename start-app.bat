@@ -18,6 +18,13 @@ REM Profile h2 = database nhung san, tu tao file ./data/edusmart
 REM Muon dung MySQL: set DB_URL, DB_USERNAME, DB_PASSWORD va bo dong SPRING_PROFILES_ACTIVE
 set SPRING_PROFILES_ACTIVE=h2
 
+REM ══ AI Agent (Gemini) ════════════════════════════════════════════
+REM Neu co file ai-key.txt (cung thu muc, chua API key Gemini) -> tu nap key
+REM Lay key mien phi tai: https://aistudio.google.com/apikey
+if exist "ai-key.txt" (
+    set /p AI_API_KEY=<ai-key.txt
+)
+
 echo.
 echo  EduSmart dang khoi dong... mo http://localhost:8081 sau ~10 giay
 echo  (Ctrl+C de thoat)
