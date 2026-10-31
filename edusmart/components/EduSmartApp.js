@@ -158,6 +158,18 @@ export default function EduSmartApp() {
       .filter(Boolean);
   }, [homeworkData]);
 
+  // ── Bài tập vừa tạo thủ công → thêm vào danh sách + cập nhật thống kê ──
+  const handleHomeworkCreated = (homework) => {
+    if (!homework) return;
+    setHomeworkData((prev) => [...prev, homework]);
+    setUserStats((prev) => ({
+      ...prev,
+      pendingHomework: (prev.pendingHomework || 0) + 1,
+      totalHomework: (prev.totalHomework || 0) + 1,
+    }));
+    showAlert('Đã thêm bài tập 📚', `"${homework.title}" (${homework.subject}) — hạn chót ${homework.dueDate}`);
+  };
+
   // ── Logout ───────────────────────────────────────────────────────────────
   const handleLogout = () => {
     tokenHelper.clear();
@@ -234,9 +246,11 @@ export default function EduSmartApp() {
               )}
               {activeTab === 'homework' && (
                 <Homework
+                  userId={currentUser.id}
                   homeworkData={homeworkData}
                   onSubmitHomework={handleSubmitHomework}
                   onShowAlert={showAlert}
+                  onCreated={handleHomeworkCreated}
                 />
               )}
               {activeTab === 'leaderboard' && (

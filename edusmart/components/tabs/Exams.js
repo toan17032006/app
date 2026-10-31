@@ -2,9 +2,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { examService } from '@/lib/services/apiServices';
 import AiExamModal from '@/components/modals/AiExamModal';
+import ManualExamModal from '@/components/modals/ManualExamModal';
 
 // ─── Exam List View ──────────────────────────────────────────────────────────
-function ExamList({ onStart, loadingStart, refreshKey, onOpenAiModal }) {
+function ExamList({ onStart, loadingStart, refreshKey, onOpenAiModal, onOpenManualModal }) {
   const [filter, setFilter] = useState('all');
   const [examsData, setExamsData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +33,13 @@ function ExamList({ onStart, loadingStart, refreshKey, onOpenAiModal }) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {/* Nút tạo đề bằng AI */}
+          {/* Nút tạo đề: thủ công hoặc AI */}
+          <button
+            onClick={onOpenManualModal}
+            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 hover:border-indigo-300 hover:text-indigo-600 text-slate-600 text-sm font-semibold rounded-xl shadow-xs transition"
+          >
+            <i className="fa-solid fa-pen-to-square"></i> Tạo thủ công
+          </button>
           <button
             onClick={onOpenAiModal}
             className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-700 hover:to-fuchsia-700 text-white text-sm font-semibold rounded-xl shadow-md transition"
@@ -300,11 +307,13 @@ export default function Exams({ userId, onCoinsEarned }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [aiModalOpen, setAiModalOpen] = useState(false);
+  const [manualModalOpen, setManualModalOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // tăng lên để ExamList tải lại danh sách
 
-  // AI tạo xong → đóng modal, tải lại danh sách và mở ngay phòng thi mới
-  const handleAiCreated = async (exam) => {
+  // Tạo đề xong (AI hoặc thủ công) → đóng modal, tải lại danh sách và mở ngay phòng thi mới
+  const handleExamCreated = async (exam) => {
     setAiModalOpen(false);
+    setManualModalOpen(false);
     setRefreshKey((k) => k + 1);
     if (exam?.id) await handleStart(exam.id);
   };
@@ -415,6 +424,7 @@ export default function Exams({ userId, onCoinsEarned }) {
           loadingStart={loadingStart}
           refreshKey={refreshKey}
           onOpenAiModal={() => setAiModalOpen(true)}
+          onOpenManualModal={() => setManualModalOpen(true)}
         />
       )}
       {view === 'room' && room && (
@@ -437,7 +447,12 @@ export default function Exams({ userId, onCoinsEarned }) {
       <AiExamModal
         isOpen={aiModalOpen}
         onClose={() => setAiModalOpen(false)}
-        onCreated={handleAiCreated}
+        onCreated={handleExamCreated}
+      />
+      <ManualExamModal
+        isOpen={manualModalOpen}
+        onClose={() => setManualModalOpen(false)}
+        onCreated={handleExamCreated}
       />
     </section>
   );

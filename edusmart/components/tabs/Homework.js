@@ -2,9 +2,11 @@
 import { useRef, useState } from 'react';
 import { homeworkStatusLabel } from '@/lib/constants';
 import { fileUrl } from '@/lib/api';
+import ManualHomeworkModal from '@/components/modals/ManualHomeworkModal';
 
-export default function Homework({ homeworkData, onSubmitHomework, onShowAlert }) {
+export default function Homework({ homeworkData, onSubmitHomework, onShowAlert, onCreated, userId }) {
   const [filter, setFilter] = useState('all');
+  const [addModalOpen, setAddModalOpen] = useState(false);
   const [submittingId, setSubmittingId] = useState(null);
   const fileInputs = useRef({}); // hwId → input element
 
@@ -51,17 +53,25 @@ export default function Homework({ homeworkData, onSubmitHomework, onShowAlert }
             )}
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-2 rounded-xl shadow-xs">
-          <i className="fa-solid fa-filter text-slate-400"></i>
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="bg-transparent text-sm font-medium focus:outline-none text-slate-700"
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setAddModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white text-sm font-semibold rounded-xl shadow-md transition"
           >
-            <option value="all">Tất cả trạng thái</option>
-            <option value="PENDING">Chưa nộp</option>
-            <option value="SUBMITTED">Đã nộp</option>
-          </select>
+            <i className="fa-solid fa-plus"></i> Thêm bài tập
+          </button>
+          <div className="flex items-center gap-2 bg-white border border-slate-200 px-3 py-2 rounded-xl shadow-xs">
+            <i className="fa-solid fa-filter text-slate-400"></i>
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="bg-transparent text-sm font-medium focus:outline-none text-slate-700"
+            >
+              <option value="all">Tất cả trạng thái</option>
+              <option value="PENDING">Chưa nộp</option>
+              <option value="SUBMITTED">Đã nộp</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -175,6 +185,13 @@ export default function Homework({ homeworkData, onSubmitHomework, onShowAlert }
           })
         )}
       </div>
+
+      <ManualHomeworkModal
+        isOpen={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        onCreated={(hw) => { setAddModalOpen(false); onCreated?.(hw); }}
+        userId={userId}
+      />
     </section>
   );
 }

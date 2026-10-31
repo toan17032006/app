@@ -12,6 +12,12 @@ export const homeworkService = {
   getAll:    (userId)        => apiFetch(`/api/homework?userId=${userId}`),
   getUpcoming:(userId, days) => apiFetch(`/api/homework/upcoming?userId=${userId}&days=${days}`),
   getOverdue: (userId)       => apiFetch(`/api/homework/overdue?userId=${userId}`),
+  /** Tạo bài tập thủ công: subject, title, dueDate (YYYY-MM-DD, phải tương lai) */
+  create:    (userId, subject, title, dueDate) =>
+    apiFetch(`/api/homework?userId=${userId}`, {
+      method: 'POST',
+      body: JSON.stringify({ subject, title, dueDate }),
+    }),
   /**
    * Nộp bài tập, kèm file đính kèm (tùy chọn).
    * Backend nhận multipart/form-data: file + fileName + fileUrl.
@@ -29,6 +35,8 @@ export const homeworkService = {
 
 export const examService = {
   getAll:    ()              => apiFetch('/api/exams'),
+  /** Tạo đề thi thủ công: { title, category?, durationMinutes, status:'PUBLISHED', questions:[{content, type, options:[{content, isCorrect}], explanation?}] } */
+  create:    (data)          => apiFetch('/api/exams', { method: 'POST', body: JSON.stringify(data) }),
   start:     (userId, examId) => apiFetch(`/api/exams/${examId}/start?userId=${userId}`, { method: 'POST' }),
   submit:    (userId, data, timedOut)  => apiFetch(`/api/exams/submit?userId=${userId}&timedOut=${timedOut}`,  { method: 'POST', body: JSON.stringify(data) }),
   getHistory:(userId)        => apiFetch(`/api/exams/history?userId=${userId}`),
