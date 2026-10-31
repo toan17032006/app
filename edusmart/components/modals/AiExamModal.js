@@ -285,7 +285,7 @@ export default function AiExamModal({ isOpen, onClose, onCreated }) {
 
           {loading && (
             <p className="text-xs text-center text-slate-400 -mt-2">
-              Quá trình này có thể mất 30–90 giây tùy độ dài tài liệu, đừng đóng cửa sổ.
+              AI đang đọc và ra đề — có thể mất 30 giây đến vài phút tùy độ dài tài liệu và tải của nhà cung cấp. Đừng đóng cửa sổ.
             </p>
           )}
         </form>

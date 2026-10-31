@@ -41,7 +41,7 @@ public class AiChatClient {
     @Value("${ai.api-key:}")
     private String apiKey;
 
-    @Value("${ai.model:gemini-2.5-flash}")
+    @Value("${ai.model:gemini-flash-latest}")
     private String model;
 
     /** Số token tối đa cho một lượt sinh — reasoning model (qwen3...) cần dư cho phần suy nghĩ */

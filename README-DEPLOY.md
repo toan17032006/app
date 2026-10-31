@@ -143,7 +143,7 @@ Nút **"Tạo bằng AI"** trong tab Bài kiểm tra: tải lên file **PDF, DOC
 |---|---|---|
 | `AI_API_KEY` | *(trống — AI tắt)* | API key. **Gemini miễn phí**: lấy tại aistudio.google.com |
 | `AI_BASE_URL` | `https://generativelanguage.googleapis.com/v1beta/openai` | Endpoint OpenAI-compatible |
-| `AI_MODEL` | `gemini-2.5-flash` | Tên model |
+| `AI_MODEL` | `gemini-flash-latest` | Tên model |
 | `AI_MAX_TOKENS` | `8192` | Tăng nếu model "suy nghĩ" lâu (qwen3...) |
 
 Ví dụ:
