@@ -25,6 +25,13 @@ if exist "ai-key.txt" (
     set /p AI_API_KEY=<ai-key.txt
 )
 
+REM ══ Google Sign-In ═══════════════════════════════════════════════
+REM Neu co file google-client-id.txt (chua OAuth Client ID dang
+REM xxxx.apps.googleusercontent.com) -> tu nap de bat nut Dang nhap bang Google
+if exist "google-client-id.txt" (
+    set /p GOOGLE_CLIENT_ID=<google-client-id.txt
+)
+
 echo.
 echo  EduSmart dang khoi dong... mo http://localhost:8081 sau ~10 giay
 echo  (Ctrl+C de thoat)

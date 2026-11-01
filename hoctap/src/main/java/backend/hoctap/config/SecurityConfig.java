@@ -88,6 +88,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Public endpoints — không cần token
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/config/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/exams").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/leaderboard/**").permitAll()
 

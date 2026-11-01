@@ -18,6 +18,7 @@ uploads/
 .env
 .env.local
 .env.*.local
+google-client-id.txt
 ai-key.txt
 
 # ══ IDE / OS ═══════════════════════════════════════════════════

@@ -120,10 +120,18 @@ java -jar hoctap.jar \
   -DUPLOAD_DIR=/var/data/edusmart/uploads
 ```
 
-> **Google Login:** backend đã sẵn sàng (`POST /api/auth/google`). Để bật nút
-> Google trên frontend: tạo OAuth 2.0 Client ID trên Google Cloud Console và đặt
-> `NEXT_PUBLIC_GOOGLE_CLIENT_ID` trong `edusmart/.env.local` rồi build lại
-> (hướng dẫn chi tiết trong `edusmart/components/GoogleButton.js`).
+> ### 🔑 Bật Đăng nhập bằng Google (2 phút, miễn phí)
+>
+> 1. Vào https://console.cloud.google.com/apis/credentials → **Create Credentials → OAuth client ID**
+>    → Application type: **Web application** → Authorized JavaScript origins thêm:
+>    `http://localhost:8081` (và `http://localhost:3000` nếu chạy dev) → Create.
+> 2. Copy **Client ID** (dạng `xxxx.apps.googleusercontent.com`).
+> 3. Lưu vào file **`google-client-id.txt`** đặt cạnh `start-app.bat` (script tự nạp),
+>    hoặc set biến môi trường `GOOGLE_CLIENT_ID`.
+> 4. Khởi động lại app → nút "Đăng nhập bằng Google" hoạt động ngay, **không cần build lại frontend**
+>    (frontend tự lấy Client ID từ `GET /api/config/google`).
+>
+> Khi đã cấu hình, backend kiểm tra claim `aud` của token — chặn token của app khác.
 > Không cấu hình → nút Google vẫn hiện nhưng báo hướng dẫn khi bấm.
 
 ---
@@ -183,6 +191,7 @@ Ngoài AI, bạn có thể tự soạn hoàn toàn:
 ## Các tính năng đã hoàn thiện
 
 - **Đăng ký / đăng nhập** email + JWT (access/refresh tự động), **Google Sign-In**
+  (chỉ cần đặt GOOGLE_CLIENT_ID — frontend tự nạp, xem hướng dẫn 4 bước ở trên)
 - **Quên / đặt lại mật khẩu** (token 1 lần, hết hạn 30 phút — trả token trực tiếp vì chưa có mail server)
 - **Thời gian biểu** CRUD đầy đủ, lọc theo ngày, lịch hôm nay trên Dashboard
 - **Bài kiểm tra trắc nghiệm**: vào thi có đồng hồ đếm ngược, **chấm điểm trên server**,

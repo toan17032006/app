@@ -67,6 +67,15 @@ public class AuthService {
     @Value("${app.mail.enabled:false}")
     private boolean mailEnabled;
 
+    /**
+     * OAuth 2.0 Client ID của app (biến môi trường GOOGLE_CLIENT_ID).
+     * Khi có cấu hình: token Google phải được cấp CHO ĐÚNG app này
+     * (kiểm tra claim "aud") — chặn token của app khác giả mạo đăng nhập.
+     * Để trống (dev) → chấp nhận mọi token Google hợp lệ.
+     */
+    @Value("${google.client-id:}")
+    private String googleClientId;
+
     // Google API endpoint để verify ID Token
     private static final String GOOGLE_TOKEN_INFO_URL =
             "https://oauth2.googleapis.com/tokeninfo?id_token=";
@@ -381,9 +390,24 @@ public class AuthService {
                         "Google token không hợp lệ hoặc đã hết hạn");
             }
 
+            // Khi đã cấu hình GOOGLE_CLIENT_ID: token phải được cấp cho đúng app này
+            String expectedAud = googleClientId != null ? googleClientId.trim() : "";
+            if (!expectedAud.isEmpty()) {
+                String aud = response.get("aud");
+                if (!expectedAud.equals(aud)) {
+                    throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                            "Token Google không thuộc ứng dụng này (audience không khớp). "
+                            + "Hãy đăng nhập bằng tài khoản Google của app EduSmart.");
+                }
+            }
+
             return response;
         } catch (ResponseStatusException e) {
             throw e;
+        } catch (org.springframework.web.client.HttpStatusCodeException e) {
+            // Google trả 400/401 → token giả/hết hạn (không phải lỗi mạng)
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
+                    "Google token không hợp lệ hoặc đã hết hạn");
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
                     "Không thể kết nối đến Google để xác thực");

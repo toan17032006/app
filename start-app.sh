@@ -24,6 +24,14 @@ if [ -f "ai-key.txt" ]; then
     export AI_API_KEY
 fi
 
+# ══ Google Sign-In ════════════════════════════════════════════════
+# Nếu có file google-client-id.txt (chứa OAuth Client ID dạng
+# xxxx.apps.googleusercontent.com) → tự nạp để bật nút Đăng nhập bằng Google
+if [ -f "google-client-id.txt" ]; then
+    GOOGLE_CLIENT_ID=$(tr -d '[:space:]' < google-client-id.txt)
+    export GOOGLE_CLIENT_ID
+fi
+
 echo ""
 echo " EduSmart đang khởi động... mở http://localhost:8081 sau ~10 giây"
 echo " (Ctrl+C để thoát)"
