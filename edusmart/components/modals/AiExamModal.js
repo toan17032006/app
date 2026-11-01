@@ -36,6 +36,7 @@ export default function AiExamModal({ isOpen, onClose, onCreated }) {
   const [detected, setDetected] = useState(null);      // { codes, durationMinutes, questionCount }
   const [selectedCode, setSelectedCode] = useState('');
   const fileInputRef = useRef(null);
+  const busyRef = useRef(false); // chặn nhấn đúp: 1 lần chỉ 1 request giao đề
 
   if (!isOpen) return null;
 
@@ -95,6 +96,8 @@ export default function AiExamModal({ isOpen, onClose, onCreated }) {
 
   // Gọi AI giao đề (examCode = mã đề đã chọn, nếu có)
   const doGenerate = async (examCode) => {
+    if (busyRef.current) return; // đang xử lý — bỏ qua các lần bấm thêm
+    busyRef.current = true;
     setLoading(true);
     setError('');
     setLoadingText(examCode
@@ -102,9 +105,11 @@ export default function AiExamModal({ isOpen, onClose, onCreated }) {
       : 'AI đang đọc tài liệu...');
     try {
       const exam = await aiService.generateExam(buildFormData(examCode));
+      busyRef.current = false;
       reset();
       onCreated(exam); // cha sẽ đóng modal + mở luôn phòng thi mới
     } catch (err) {
+      busyRef.current = false;
       setError(err.message || 'Không thể tạo bài kiểm tra');
       setLoading(false);
     }
@@ -118,6 +123,8 @@ export default function AiExamModal({ isOpen, onClose, onCreated }) {
       setError('Vui lòng chọn file tài liệu trước');
       return;
     }
+    if (busyRef.current) return;
+    busyRef.current = true;
     setError('');
     setLoading(true);
     setLoadingText('AI đang quét tài liệu...');
@@ -131,6 +138,7 @@ export default function AiExamModal({ isOpen, onClose, onCreated }) {
           setSelectedCode(det.codes[0]);
           setLoading(false);
           setStep('chooseCode'); // → bước chọn mã đề
+          busyRef.current = false;
           return;
         }
       }
@@ -140,6 +148,7 @@ export default function AiExamModal({ isOpen, onClose, onCreated }) {
     } finally {
       setLoading(false);
     }
+    busyRef.current = false;
     await doGenerate();
   };
 
@@ -217,19 +226,35 @@ export default function AiExamModal({ isOpen, onClose, onCreated }) {
 
             <div className="flex justify-end gap-3 pt-1">
               <button
-                type="button" onClick={() => setStep('form')}
-                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-sm rounded-xl transition"
+                type="button" onClick={() => setStep('form')} disabled={loading}
+                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-600 font-semibold text-sm rounded-xl transition"
               >
                 Quay lại
               </button>
               <button
-                type="button" onClick={handleChooseCode} disabled={!selectedCode}
-                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 text-white font-semibold text-sm rounded-xl transition shadow-md flex items-center gap-2"
+                type="button" onClick={handleChooseCode} disabled={!selectedCode || loading}
+                className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-semibold text-sm rounded-xl transition shadow-md flex items-center gap-2"
               >
-                <i className="fa-solid fa-file-circle-check"></i>
-                Giao đề theo mã {selectedCode || '...'}
+                {loading ? (
+                  <>
+                    <i className="fa-solid fa-spinner animate-spin"></i>
+                    Đang giao đề theo mã {selectedCode}...
+                  </>
+                ) : (
+                  <>
+                    <i className="fa-solid fa-file-circle-check"></i>
+                    Giao đề theo mã {selectedCode || '...'}
+                  </>
+                )}
               </button>
             </div>
+
+            {loading && (
+              <p className="text-xs text-center text-indigo-500 -mt-2">
+                <i className="fa-solid fa-circle-info mr-1"></i>
+                AI đang soạn đề theo mã đã chọn — có thể mất 1–4 phút. Đừng đóng cửa sổ.
+              </p>
+            )}
           </div>
         ) : (
           /* ── BƯỚC 1: form chính ── */
